@@ -81,21 +81,46 @@ const restartButton = document.getElementById('restart-button');
 restartButton.addEventListener('click', restartGame);
 
 async function restartGame() {
+	// Limpiar el contenedor de jugadores y mensajes
+	container.innerHTML = '';
+	shoutDisplay.innerHTML = '';
+
+	// Resetear arrays y estados
+	polos = [];
+	myRole = '';
+
+	// Ocultar elementos del juego anterior
+	shoutbtn.style.display = 'none';
+	roleDisplay.style.display = 'none';
+	shoutDisplay.style.display = 'none';
+
+	// Limpiar las puntuaciones actuales
+	const pointsContainers = document.querySelectorAll('.points-container');
+	pointsContainers.forEach((container) => {
+		container.innerHTML = '';
+	});
+
+	// Emitir evento para reiniciar el juego
 	socket.emit('startGame');
 }
 
 // ------------- POINTS DISPLAY ----------------
 function updatePointsDisplay(players) {
-	// Actualizar puntos en todas las pantallas
+	// Limpiar todos los contenedores de puntuaciones antes de actualizarlos
 	const pointsContainers = document.querySelectorAll('.points-container');
 
 	pointsContainers.forEach((container) => {
-		container.innerHTML = `
-      <div class="points-header">
-        <h3>Puntuaciones</h3>
-        <div class="points-count">Jugadores: ${players.length}</div>
-      </div>
-    `;
+		// Limpiar el contenedor
+		container.innerHTML = '';
+
+		// Crear el encabezado
+		const header = document.createElement('div');
+		header.className = 'points-header';
+		header.innerHTML = `
+					<h3>Puntuaciones</h3>
+					<div class="points-count">Jugadores: ${players.length}</div>
+			`;
+		container.appendChild(header);
 
 		const pointsList = document.createElement('ul');
 		pointsList.className = 'points-list';
@@ -107,29 +132,34 @@ function updatePointsDisplay(players) {
 			const playerItem = document.createElement('li');
 			playerItem.className = 'player-points';
 
-			// Resaltar el jugador actual
 			const isCurrentPlayer = player.nickname === userName;
 			if (isCurrentPlayer) {
 				playerItem.classList.add('current-player');
 			}
 
-			// Añadir corona al líder
 			const isLeader = player === sortedPlayers[0] && player.points > 0;
 			const leaderIcon = isLeader ? '<span class="crown">👑</span>' : '';
 
+			// Asegurarse de que se muestre el nickname o un valor por defecto
+			const displayName = player.nickname || 'Jugador sin nombre';
+			const displayPoints = typeof player.points === 'number' ? player.points : 0;
+
 			playerItem.innerHTML = `
-        <div class="player-info">
-          ${leaderIcon}
-          <span class="player-nickname">${player.nickname}</span>
-          ${isCurrentPlayer ? '<span class="current-player-indicator">👈</span>' : ''}
-        </div>
-        <span class="player-score">${player.points} puntos</span>
-      `;
+							<div class="player-info">
+									${leaderIcon}
+									<span class="player-nickname">${displayName}</span>
+									${isCurrentPlayer ? '<span class="current-player-indicator">👈</span>' : ''}
+							</div>
+							<span class="player-score">${displayPoints} puntos</span>
+					`;
 			pointsList.appendChild(playerItem);
 		});
 
 		container.appendChild(pointsList);
 	});
+
+	// Debug: mostrar en consola para verificar actualizaciones
+	console.log('Actualizando puntuaciones:', players);
 }
 
 // ------------- SOCKET LISTENERS ----------------
@@ -142,6 +172,7 @@ socket.on('userJoined', (data) => {
 });
 
 socket.on('updatePoints', (data) => {
+	console.log('Recibida actualización de puntos:', data);
 	if (data?.players) {
 		players = data.players;
 		updatePointsDisplay(players);
@@ -149,6 +180,7 @@ socket.on('updatePoints', (data) => {
 });
 
 socket.on('startGame', (data) => {
+	console.log('Iniciando nuevo juego:', data);
 	polos = [];
 	container.innerHTML = '';
 	gameOverScreen.style.display = 'none';
@@ -160,7 +192,9 @@ socket.on('startGame', (data) => {
 	roleDisplay.innerHTML = data;
 	roleDisplay.style.display = 'block';
 	gameUserNameDisplay.innerHTML = userName;
-	updatePointsDisplay(players); // Actualizar puntos al iniciar el juego
+
+	// Asegurarse de que las puntuaciones se actualicen al iniciar el juego
+	updatePointsDisplay(players);
 
 	shoutbtn.innerHTML = `Gritar ${myRole}`;
 
