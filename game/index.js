@@ -158,7 +158,6 @@ function updatePointsDisplay(players) {
 		container.appendChild(pointsList);
 	});
 
-	// Debug: mostrar en consola para verificar actualizaciones
 	console.log('Actualizando puntuaciones:', players);
 }
 

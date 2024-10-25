@@ -11,7 +11,9 @@ export default function renderScreen1() {
                 <button id="sortScore" class="sort-button">Sort by Score</button>
             </div>
             <div id="winner-announcement" class="winner-container"></div>
-            <ul id="scores-list" class="scores-list"></ul>
+            <ul id="scores-list" class="scores-list">
+                <li class="score-item">No hay jugadores conectados</li>
+            </ul>
         </div>
     `;
 
@@ -22,6 +24,22 @@ export default function renderScreen1() {
 		players = data.updatedPlayers;
 		updateWinnerAnnouncement(players);
 		renderPlayersList(players);
+	};
+
+	const handleUserJoined = (data) => {
+		console.log('Received userJoined event:', data);
+		if (data?.players) {
+			players = data.players;
+			renderPlayersList(players);
+		}
+	};
+
+	const handleUpdatePoints = (data) => {
+		console.log('Received updatePoints event:', data);
+		if (data?.players) {
+			players = data.players;
+			renderPlayersList(players);
+		}
 	};
 
 	const updateWinnerAnnouncement = (players) => {
@@ -35,6 +53,8 @@ export default function renderScreen1() {
                     <p>🎉 ¡Has ganado el juego! 🏆</p>
                 </div>
             `;
+		} else {
+			winnerAnnouncement.innerHTML = '';
 		}
 	};
 
@@ -48,22 +68,48 @@ export default function renderScreen1() {
 		renderPlayersList(players);
 	};
 
-	// Event Listeners
+	function renderPlayersList(players) {
+		const scoresList = document.getElementById('scores-list');
+
+		if (!players || players.length === 0) {
+			scoresList.innerHTML = `
+                <li class="score-item">No hay jugadores conectados</li>
+            `;
+			return;
+		}
+
+		scoresList.innerHTML = players
+			.map((player, index) => {
+				const isLeader = index === 0 && player.points > 0;
+				const crown = isLeader ? '<span class="crown">👑</span>' : '';
+
+				return `
+                    <li class="score-item">
+                        ${crown}
+                        <span class="player-name">${player.nickname}</span>:
+                        <span class="player-points">${player.points} points</span>
+                    </li>
+                `;
+			})
+			.join('');
+	}
+
+	// Event Listeners para el socket
 	socket.on('notifyGameOver', handleGameOver);
+	socket.on('userJoined', handleUserJoined);
+	socket.on('updatePoints', handleUpdatePoints);
+
+	// Event Listeners para los botones
 	document.getElementById('sortAlpha').addEventListener('click', handleSortByName);
 	document.getElementById('sortScore').addEventListener('click', handleSortByScore);
-}
 
-function renderPlayersList(players) {
-	const scoresList = document.getElementById('scores-list');
-	scoresList.innerHTML = players
-		.map(
-			(player) => `
-            <li class="score-item">
-                <span class="player-name">${player.nickname}</span>:
-                <span class="player-points">${player.points} points</span>
-            </li>
-        `
-		)
-		.join('');
+	// Función de limpieza para remover event listeners cuando se desmonte el componente
+	return () => {
+		socket.off('notifyGameOver', handleGameOver);
+		socket.off('userJoined', handleUserJoined);
+		socket.off('updatePoints', handleUpdatePoints);
+
+		document.getElementById('sortAlpha')?.removeEventListener('click', handleSortByName);
+		document.getElementById('sortScore')?.removeEventListener('click', handleSortByScore);
+	};
 }
